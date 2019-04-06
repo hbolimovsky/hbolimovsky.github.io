@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="author" content="Herbie Bolimovsky">
+    <meta name="description" content="Herbie Bolimovsky&#39;s personal website">
+    <meta name="keywords" content="blog,developer,security,engineer,passwordless,webauthn,fido">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Arriving At A Passwordless Future"/>
+<meta name="twitter:description" content="Look Familiar?
+Below is an abridged (and prettier) version of a white paper I&rsquo;m working on. I outline my reasoning around the password problem, how various existing solutions attempt to solve it (spoiler alert: they don&rsquo;t!), and finally how passwordless solutions on the horizon might once and for all solve the password problem.
+Intro Passwords suck. They&rsquo;re incredibly frustrating to use. They&rsquo;re also incredibly insecure. Stolen and weak passwords accounted for 81% of data breaches in 2017 1."/>
+
+    <meta property="og:title" content="Arriving At A Passwordless Future" />
+<meta property="og:description" content="Look Familiar?
+Below is an abridged (and prettier) version of a white paper I&rsquo;m working on. I outline my reasoning around the password problem, how various existing solutions attempt to solve it (spoiler alert: they don&rsquo;t!), and finally how passwordless solutions on the horizon might once and for all solve the password problem.
+Intro Passwords suck. They&rsquo;re incredibly frustrating to use. They&rsquo;re also incredibly insecure. Stolen and weak passwords accounted for 81% of data breaches in 2017 1." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.herbie.dev/blog/discovering-a-passwordless-future/" />
+<meta property="article:published_time" content="2019-04-04T10:32:57-07:00"/>
+<meta property="article:modified_time" content="2019-04-04T10:32:57-07:00"/>
+
+
+    <base href="https://www.herbie.dev/blog/discovering-a-passwordless-future/">
+    <title>
+  Arriving At A Passwordless Future · Herbie&#39;s Blog
+</title>
+
+    <link rel="canonical" href="https://www.herbie.dev/blog/discovering-a-passwordless-future/">
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700|Merriweather:300,700|Source+Code+Pro:400,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css" integrity="sha256-oSrCnRYXvHG31SBifqP2PM1uje7SJUyX0nTwO2RJV54=" crossorigin="anonymous" />
+
+    
+      
+      
+      <link rel="stylesheet" href="https://www.herbie.dev/css/coder.min.8881182b3ec36ffd9c735306f7e16ce9b1129ebc650e069e7c4114827e9d9b23.css" integrity="sha256-iIEYKz7Db/2cc1MG9&#43;Fs6bESnrxlDgaefEEUgn6dmyM=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+
+    
+      <link rel="stylesheet" href="https://www.herbie.dev/css/custom.css">
+    
+
+    <link rel="icon" type="image/png" href="https://www.herbie.dev/img/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="https://www.herbie.dev/img/favicon-16x16.png" sizes="16x16">
+
+    
+
+    <meta name="generator" content="Hugo 0.54.0" />
+  </head>
+
+  <body class=" ">
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="https://www.herbie.dev/">
+      Herbie&#39;s Blog
+    </a>
+    <input type="checkbox" id="menu-toggle" />
+    <label class="menu-button float-right" for="menu-toggle"><i class="fas fa-bars"></i></label>
+    <ul class="navigation-list">
+      
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://www.herbie.dev/about/">About</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://www.herbie.dev/blog/">Blog</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://www.herbie.dev/projects/">Projects</a>
+          </li>
+        
+      
+      
+    </ul>
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container page">
+  <article>
+    <header>
+      <h1>Arriving At A Passwordless Future</h1>
+    </header>
+
+    
+
+<p><img src="https://www.herbie.dev/images/password_problem.gif" alt="password_problem.gif" /></p>
+
+<p><em>Look Familiar?</em></p>
+
+<p>Below is an abridged (and prettier) version of a white paper I&rsquo;m working on. I outline my reasoning around the password problem, how various existing solutions attempt to solve it (spoiler alert: they don&rsquo;t!), and finally how passwordless solutions on the horizon might once and for all solve the password problem.</p>
+
+<h2 id="intro">Intro</h2>
+
+<p>Passwords suck. They&rsquo;re incredibly frustrating to use. They&rsquo;re also incredibly insecure. Stolen and weak passwords accounted for 81% of data breaches in 2017 <sup class="footnote-ref" id="fnref:fn1"><a href="#fn:fn1">1</a></sup>. Imagine a world where in order to login, ALL you have to do is push a button - now imagine that world is thousands of times more secure. Let&rsquo;s walk through how to arrive at that world.</p>
+
+<h2 id="security-explanation">Security Explanation</h2>
+
+<p>Here are three common, effective, and widespread attacks against passwords.</p>
+
+<p><img src="https://www.herbie.dev/images/zuckerberg_water.gif" alt="zuckerberg_water.gif" /></p>
+
+<p><em>Zuckerbook</em></p>
+
+<p><strong>Brute force attack</strong></p>
+
+<p>A lot of people use weak or easily guessable passwords. For example, there was a huge LinkedIn password database dump. Hackers found Mark Zuckerberg&rsquo;s email and brute forced his password (essentially tried a bunch of combinations) which was &lsquo;dadada&rsquo; <sup class="footnote-ref" id="fnref:fn2"><a href="#fn:fn2">2</a></sup>.</p>
+
+<p><strong>Password reuse</strong></p>
+
+<p>Some people use the same password across multiple accounts, so if one account gets compromised their other accounts are compromised. For example, hackers used Mark Zuckerberg&rsquo;s &lsquo;dadada&rsquo; password to break into his Twitter account and post something <sup class="footnote-ref" id="fnref:fn2"><a href="#fn:fn2">2</a></sup>.</p>
+
+<p><strong>Phishing attack</strong></p>
+
+<p>Phishing attacks are when a bad actor pretends to be someone else to steal your information. For example, there&rsquo;s a popular lottery scam where people on Facebook pretend to be Mark Zuckerberg giving away money. The scammer can simply ask for a user&rsquo;s bank account information, and that user is compromised (in an actual example, scammer&rsquo;s masquerading as Mark Zuckerburg chose &lsquo;lottery winners&rsquo; and swindled $1,500 through iTunes gift cards and wire transfers <sup class="footnote-ref" id="fnref:fn3"><a href="#fn:fn3">3</a></sup>).</p>
+
+<p>All of these password problems (and more) are due to the fact that users are tasked with generating their passwords, managing their passwords, and giving it to the proper parties.</p>
+
+<h2 id="insufficient-existing-solutions">Insufficient Existing Solutions</h2>
+
+<p>Let&rsquo;s start with the most common solutions along with their most common defects.</p>
+
+<h6 id="most-common-2fa-text-email-otp-generators">Most Common 2FA (text/email/OTP generators)</h6>
+
+<p>First, let&rsquo;s discuss 2nd factor authentication, or 2FA.</p>
+
+<p><img src="https://www.herbie.dev/images/sms_2fa_example.jpg" alt="sms_2fa_example.jpg" /></p>
+
+<p><em>SMS (text) 2FA</em></p>
+
+<p>The Most common forms of 2FA, such as text message (where you get text a code), email (where you get emailed a code), and one time passwords (called OTPs, for example a device that outputs a code every 30 seconds) are annoying to use and easily phishable. There are additional common attacks, for example someone stole $23.8 million from a cryptocurrency investor through a SIM swapping attack <sup class="footnote-ref" id="fnref:fn4"><a href="#fn:fn4">4</a></sup>, where an attacker takes over a phone number to circumvent text message 2FA, usually through bribing or tricking a mobile carrier (i.e. Verizon) employee.</p>
+
+<h6 id="passwordless-solutions-insecure">Passwordless Solutions (insecure)</h6>
+
+<p>Now let&rsquo;s discuss what are called &lsquo;passwordless&rsquo; authentication solutions.</p>
+
+<p><strong>Magic Link</strong></p>
+
+<p><img src="https://www.herbie.dev/images/magic_link_example.png" alt="magic_link_example.png" /></p>
+
+<p><em>Magic Link (email)</em></p>
+
+<p>A common form of passwordless authentication uses &lsquo;magic links&rsquo;. This is where a user gets sent a &lsquo;magic link&rsquo; (typically a hyperlink) via email or text message that they simply click in order to login to their account. Like email and text message 2FA, magic links are susceptible to phishing attacks. For example, an attacker could send a legitimate looking email from a legitimate looking address with a malicious link.</p>
+
+<p><strong>One Time Code</strong></p>
+
+<p><img src="https://www.herbie.dev/images/one_time_code_example.png" alt="one_time_code_example.png" /></p>
+
+<p><em>One Time Code (email)</em></p>
+
+<p>One time code&rsquo;s are identical to 2FA except they skip the password part. They also have identical security weaknesses and usability issues.</p>
+
+<h2 id="digital-factors-of-authentication">Digital Factors Of Authentication</h2>
+
+<p><img src="https://www.herbie.dev/images/auth_factors.png" alt="auth_factors.png" /></p>
+
+<p><em>Authentication Factors</em></p>
+
+<p>Let&rsquo;s quickly introduce a concept: digital factors of authentication, or more plainly different forms of logging in. All authentication factors can be broken down into 3 categories: something you know, which is the most common (for example, passwords or pins), something you have (for example a mobile phone or a USB hardware token), and something you are (for example a fingerprint or face biometric).</p>
+
+<h2 id="technical-insights-1">Technical Insights 1</h2>
+
+<p>Our first technical insight so far: a secure and usable digital authentication system CANNOT consist of something you know**. Through passwords we know that humans will generate poor passwords and reuse the same password across different accounts. Through passwords and 2FA/passwordless solutions we know that humans will give up their credentials to a malicious party when phished. We also know through personal experiences that passwords and 2FA are a pain to use. Therefore, in order to have a truly secure and easy to use authentication solution, something you know CANNOT be used**.</p>
+
+<h2 id="secure-existing-solutions">Secure Existing Solutions</h2>
+
+<p>Now let&rsquo;s look at password solutions that add genuine security and usability.</p>
+
+<h6 id="secure-2fa-push-notification">Secure 2FA (push notification)</h6>
+
+<p><img src="https://www.herbie.dev/images/push_notification_2fa_example.png" alt="push_notification_2fa_example.png" /></p>
+
+<p><em>Push Notification 2FA</em></p>
+
+<p>One secure form of 2nd factor authentication is push notification 2FA, for example the Duo Mobile app. In push notification 2FA, you download an application on your mobile device and tie it to your account. Then anytime you want to log in, you get a push notification on your phone, which opens up the app and asks whether you are trying to login. You push a button to respond, i.e. &lsquo;accept&rsquo; or &lsquo;deny&rsquo;.</p>
+
+<h6 id="secure-2fa-security-key">Secure 2FA (security key)</h6>
+
+<p><img src="https://www.herbie.dev/images/yubikey_u2f_example.png" alt="yubikey_u2f_example.png" /></p>
+
+<p><em>Security Key (YubiKey) Authentication</em></p>
+
+<p>Another secure form of 2nd factor authentication is security key 2FA, such as with a YubiKey or Google&rsquo;s Titan Security Key. In this form of 2FA, a user has a separate, dedicated hardware device they carry around with them. After entering their username/password, the user needs to push a button on the security key to confirm logging in.</p>
+
+<h6 id="passwordless-solutions-state-of-the-art">Passwordless Solutions (state of the art)</h6>
+
+<p><img src="https://www.herbie.dev/images/fido_example.jpg" alt="fido_example.jpg" /></p>
+
+<p><em>FIDO2 Diagram</em></p>
+
+<p>The current state of the art in passwordless authentication is a set of standards called FIDO (currently UAF, U2F, FIDO2 and WebAuthn). FIDO uses a combination of biometrics and some form of trusted hardware to accomplish passwordless login (FIDO also allows for security keys). For example, if you have a banking app installed on your iPhone, it can let you login using Touch ID or Face ID through the FIDO standards.</p>
+
+<h2 id="technical-insights-2">Technical Insights 2</h2>
+
+<p>Notice a common thread between push notification 2FA, security key 2FA, and FIDO - in all 3 cases, in order to login, the user simply needs to perform a gesture. This is our second technical insight: the most advanced login solutions delegate credential management (i.e. creation, provisioning) to a device - a combination of hardware and software - and allow a user to login via a simple gesture (push a button, swipe a slider), which is usually followed by authenticating the user to the device (scan a finger, scan a face using biometrics).</p>
+
+<h2 id="summary-to-this-point">Summary To This Point</h2>
+
+<p>Let&rsquo;s quickly summarize everything so far. Passwords suck. 3 common password attacks are phishing, brute forcing, and reuse. Most solutions to this problem add a layer of inconvenience and marginal security. Push notification 2FA, hardware token 2FA, and FIDO passwordless login add genuine security and ease of use by simply requiring a user to supply a gesture in order to login, while handling the complexities of credential management.</p>
+
+<h2 id="short-lived-vs-long-lived-authentication">Short Lived vs Long Lived Authentication</h2>
+
+<p>Aright, we&rsquo;re almost there! We just need to wrap our head around one more concept.</p>
+
+<p>There is still one huge, unaddressed, gapping security issue that relates to all current password solutions, and contains another technical insight. There are two types of authentication for any service/application/account - short lived authentication and long lived authentication***.</p>
+
+<p><strong>Short Lived Authentication</strong></p>
+
+<p>Short lived authentication (this can also be thought of as &lsquo;continuous&rsquo;  or &lsquo;frequent&rsquo; authentication) is what you do on a daily basis, for example logging into a banking app or your corporate enterprise account. Short lived authentication provides temporary trust to an account/client pair, so if you log into the Chase app on your iPhone, it temporarily trusts your account on the Chase app on your phone. If you wanted to use Chase through Safari on the same phone, you would need to login again since it&rsquo;s a different client.</p>
+
+<p><strong>Long Lived Authentication</strong></p>
+
+<p>Long lived authentication occurs much less frequently, and is used to perform account management tasks, for example confirming adding a new device to your account, verifying the new location of a login attempt, or resetting a password. Long lived authentication is tied to an account, which is virtually always an email account. This means all password solutions can be circumvented by compromising the long lived authentication account. Let&rsquo;s say that again for dramatic effect: even if you have the most state of the art passwordless login turned on for all of your internet accounts, if an attacker breaks into the email account backing your internet accounts, they can reset all of your passwords including your long lived, email account&rsquo;s****. This means the hacker has essentially hacked into all of your accounts and locked you out, leaving you screwed, donzo, SOL, PWNED, and so on.</p>
+
+<h2 id="technical-insight-3">Technical Insight 3</h2>
+
+<p>This is the 3rd key technical insight - in order to be truly passwordless - in order to seriously enhance security and get rid of the problems associated with passwords, BOTH short lived and long lived authentication need to be completely, absolutely, 100% passwordless.</p>
+
+<h2 id="solutions">Solutions</h2>
+
+<p>Huzzah! We made it through the password problem, poor password solutions, better password solutions, and 3 technical insights. Now onto the fun part - the solutions. Below are overviews of the most popular theories on what will replace passwords.</p>
+
+<h6 id="2fa-supplants-passwords">2FA Supplants Passwords</h6>
+
+<p>There&rsquo;s one school of thought that passwords are so entrenched (tech debt, everyone&rsquo;s familiar with them) that they will stick around but become essentially useless, and the main form of logging in will be through 2nd factor authentication.</p>
+
+<h6 id="centralized-biometrics">Centralized Biometrics</h6>
+
+<p>Centralized biometrics is where you use a biometric (fingerprint, face) directly to log into all your accounts (think <a href="https://www.clearme.com/how-it-works/">CLEAR</a> from the airport). This is probably the most convenient form of passwordless login (you can&rsquo;t really lose your face or forget your finger), however security engineers haven&rsquo;t really figured out how to implement it securely (yet)***** due to two main problems. In computer security, there&rsquo;s a concept called &lsquo;rekeying&rsquo; where you periodically change a user&rsquo;s &lsquo;security key&rsquo;. Imagine if a centralized database of people&rsquo;s biometrics got hacked - you could &lsquo;rekey&rsquo; your fingerprint at most 9 times, and you can&rsquo;t really rekey your face. There&rsquo;s also serious information leakage issues. Every time you go out in public and touch something or show your face, you leak sensitive login information.</p>
+
+<h6 id="network-of-trusted-devices">Network Of Trusted Devices</h6>
+
+<p>A third possibility for passwordless authentication, and the one I&rsquo;m working on, is via a network of trusted devices. This may sound complicated but it&rsquo;s pretty simple. Imagine you have a MacBook and an iPad with Touch ID, an iPhone XS with Face ID, and a Yubikey. After registering the devices to your account, they become trusted, which means any one of them can be used to log you into your account. Let&rsquo;s go over how this works.</p>
+
+<p><strong>Trusted Device (native authentication)</strong></p>
+
+<p>Imagine you&rsquo;re on your iPhone XS, and you want to log into your Chase banking app. Instead of Chase asking for your username and password, you type in your username and press login - then your iPhone scans your face, and boom! You just signed into your Chase app using one face and zero passwords! You can imagine a similar flow on your MacBook with Touch ID, where you go to chase.com on Safari, type in your username, click &lsquo;login&rsquo;, scan your finger, and are successfully logged in (again using one finger and zero passwords).</p>
+
+<p><strong>Untrusted Device (delegated authentication)</strong></p>
+
+<p>There is one issue we need to address: what if you&rsquo;re on a device that isn&rsquo;t trusted? There are a number of reasons why you might not want to register a device to your account, for example the device doesn&rsquo;t have a biometric scanner (i.e. a gaming console like an Xbox), or it&rsquo;s a shared device (i.e. a hotel computer). In these cases, the untrusted device would &lsquo;use&rsquo; one of your trusted devices to log you in. For example, imagine you&rsquo;re on vacation without your computer, but you need to login to your corporate account. You go to the hotel&rsquo;s shared computer, navigate to your company&rsquo;s website, type in your username and click &lsquo;login&rsquo;. You get a notification on your phone asking if you&rsquo;re trying to login to a computer in Hawaii. You click yes, scan your face, and boom! You&rsquo;re logged into the untrusted hotel&rsquo;s shared computer using your face on your trusted cell phone.</p>
+
+<h2 id="fin">Fin</h2>
+
+<p>Passwords suck, but there&rsquo;s hope. While existing solutions to passwords leave a lot to be desired, there are exciting solutions on the horizon. It&rsquo;s probably unreasonable to predict exactly how logins will play out, but a passwordless future is looking more and more likely.</p>
+
+<h2 id="notes">Notes</h2>
+
+<p>* <em>whenever you see the word &lsquo;authentication&rsquo; you can just think &lsquo;login&rsquo;</em></p>
+
+<p>** <em>there is one caveat to this rule when trying to login through a biometric on a device and the biometric &lsquo;check&rsquo; fails enough times, your phone might prompt you for your password. In properly implemented authentication systems this is not an issue since the password you are using to login to your phone is NOT the credential being used to log you into your account.</em></p>
+
+<p>*** <em>parts of this are referred to as the &lsquo;account recovery&rsquo; or &lsquo;password reset&rsquo; problem</em></p>
+
+<p>**** <em>for some accounts this might be a slight oversimplification - in the real world, there are account recovery flows, but most of those use weak forms of authentication such as security questions (easily guessable/searchable) or use email/text message one time codes (as discussed previously)</em></p>
+
+<p>***** <em>in a closed environment such as an office, or in a system where there&rsquo;s a supervisor such as the airport (i.e. to make sure someone isn&rsquo;t wearing a mask), biometrics appear to be sufficiently secure</em></p>
+
+<h2 id="citations">Citations</h2>
+<div class="footnotes">
+
+<hr />
+
+<ol>
+<li id="fn:fn1"><a href="https://www.mcafee.com/enterprise/en-us/security-awareness/verizon-2017-dbir.html">https://www.mcafee.com/enterprise/en-us/security-awareness/verizon-2017-dbir.html</a>
+ <a class="footnote-return" href="#fnref:fn1"><sup>[return]</sup></a></li>
+<li id="fn:fn2"><a href="https://www.telegraph.co.uk/technology/2016/06/06/mark-zuckerbergs-password-was-dadada-what-hope-do-the-rest-of-us/">https://www.telegraph.co.uk/technology/2016/06/06/mark-zuckerbergs-password-was-dadada-what-hope-do-the-rest-of-us/</a>
+ <a class="footnote-return" href="#fnref:fn2"><sup>[return]</sup></a></li>
+<li id="fn:fn3"><a href="https://www.nytimes.com/2018/04/25/technology/fake-mark-zuckerberg-facebook.html">https://www.nytimes.com/2018/04/25/technology/fake-mark-zuckerberg-facebook.html</a>
+ <a class="footnote-return" href="#fnref:fn3"><sup>[return]</sup></a></li>
+<li id="fn:fn4"><a href="https://www.bleepingcomputer.com/news/security/hackers-stole-17-billion-in-cryptocurrency-last-year/">https://www.bleepingcomputer.com/news/security/hackers-stole-17-billion-in-cryptocurrency-last-year/</a>
+ <a class="footnote-return" href="#fnref:fn4"><sup>[return]</sup></a></li>
+</ol>
+</div>
+
+  </article>
+</section>
+
+
+      </div>
+
+      <footer class="footer">
+  <section class="container">
+    
+      <p>Herbie&#39;s personal blog.</p>
+    
+     © 2019
+    
+       · 
+      Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+    
+    
+  </section>
+</footer>
+
+    </main>
+
+    
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-136612598-1', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+
+
+  </body>
+
+</html>

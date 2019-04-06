@@ -6,9 +6,21 @@
     <description>Recent content on Herbie&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
+    <lastBuildDate>Thu, 04 Apr 2019 10:32:57 -0700</lastBuildDate>
     
 	<atom:link href="https://www.herbie.dev/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Arriving At A Passwordless Future</title>
+      <link>https://www.herbie.dev/blog/discovering-a-passwordless-future/</link>
+      <pubDate>Thu, 04 Apr 2019 10:32:57 -0700</pubDate>
+      
+      <guid>https://www.herbie.dev/blog/discovering-a-passwordless-future/</guid>
+      <description>Look Familiar?
+Below is an abridged (and prettier) version of a white paper I&amp;rsquo;m working on. I outline my reasoning around the password problem, how various existing solutions attempt to solve it (spoiler alert: they don&amp;rsquo;t!), and finally how passwordless solutions on the horizon might once and for all solve the password problem.
+Intro Passwords suck. They&amp;rsquo;re incredibly frustrating to use. They&amp;rsquo;re also incredibly insecure. Stolen and weak passwords accounted for 81% of data breaches in 2017 1.</description>
+    </item>
     
     <item>
       <title></title>
@@ -17,15 +29,6 @@
       
       <guid>https://www.herbie.dev/about/</guid>
       <description>About Me Welcome! My name is Herbie Bolimovsky and I&amp;rsquo;m a security software engineer living in the Bay Area. I am currently self employed working on passwordless authentication solutions. I formerly worked at Apple within various security teams including an &amp;lsquo;applied crypto&amp;rsquo; team responsible for the internal Certificate Authority (CA) and internal encryption as a service offering, the pen testing team setting up a secrets management solution, and the Kubernetes team working on general security.</description>
-    </item>
-    
-    <item>
-      <title></title>
-      <link>https://www.herbie.dev/blog/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.herbie.dev/blog/</guid>
-      <description>Blog Coming soon!</description>
     </item>
     
     <item>
