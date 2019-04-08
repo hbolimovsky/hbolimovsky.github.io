@@ -6,17 +6,27 @@
     <description>Recent content in Blogs on Herbie&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 04 Apr 2019 10:32:57 -0700</lastBuildDate>
+    <lastBuildDate>Sun, 07 Apr 2019 07:35:24 -0700</lastBuildDate>
     
 	<atom:link href="https://www.herbie.dev/blog/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
+      <title>Network of Trusted Devices Example (Illustrations)</title>
+      <link>https://www.herbie.dev/blog/network-of-trusted-devices-example/</link>
+      <pubDate>Sun, 07 Apr 2019 07:35:24 -0700</pubDate>
+      
+      <guid>https://www.herbie.dev/blog/network-of-trusted-devices-example/</guid>
+      <description>Below is an example of what a passwordless world via a network of trusted devices could look like. It follows Bob, a new employee of Foobar Corp, along with Alice, Foobar&amp;rsquo;s trusty head of IT. For more on a passwordless world, see my previous post Arriving At A Passwordless Future.
+Bob&amp;rsquo;s First Day On Bob&amp;rsquo;s first day Alice gives him a brand new MacBook with Touch ID. Alice tells Bob:</description>
+    </item>
+    
+    <item>
       <title>Arriving At A Passwordless Future</title>
-      <link>https://www.herbie.dev/blog/discovering-a-passwordless-future/</link>
+      <link>https://www.herbie.dev/blog/arriving-at-a-passwordless-future/</link>
       <pubDate>Thu, 04 Apr 2019 10:32:57 -0700</pubDate>
       
-      <guid>https://www.herbie.dev/blog/discovering-a-passwordless-future/</guid>
+      <guid>https://www.herbie.dev/blog/arriving-at-a-passwordless-future/</guid>
       <description>Look Familiar?
 Below is an abridged (and prettier) version of a white paper I&amp;rsquo;m working on. I outline my reasoning around the password problem, how various existing solutions attempt to solve it (spoiler alert: they don&amp;rsquo;t!), and finally how passwordless solutions on the horizon might once and for all solve the password problem.
 Intro Passwords suck. They&amp;rsquo;re incredibly frustrating to use. They&amp;rsquo;re also incredibly insecure. Stolen and weak passwords accounted for 81% of data breaches in 2017 1.</description>

@@ -3,7 +3,12 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://www.herbie.dev/blog/discovering-a-passwordless-future/</loc>
+    <loc>https://www.herbie.dev/blog/network-of-trusted-devices-example/</loc>
+    <lastmod>2019-04-07T07:35:24-07:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://www.herbie.dev/blog/arriving-at-a-passwordless-future/</loc>
     <lastmod>2019-04-04T10:32:57-07:00</lastmod>
   </url>
   
@@ -17,7 +22,7 @@
   
   <url>
     <loc>https://www.herbie.dev/blog/</loc>
-    <lastmod>2019-04-04T10:32:57-07:00</lastmod>
+    <lastmod>2019-04-07T07:35:24-07:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -28,7 +33,7 @@
   
   <url>
     <loc>https://www.herbie.dev/</loc>
-    <lastmod>2019-04-04T10:32:57-07:00</lastmod>
+    <lastmod>2019-04-07T07:35:24-07:00</lastmod>
     <priority>0</priority>
   </url>
   
