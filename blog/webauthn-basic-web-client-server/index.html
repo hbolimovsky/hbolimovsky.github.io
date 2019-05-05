@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="author" content="Herbie Bolimovsky">
+    <meta name="description" content="Herbie Bolimovsky&#39;s personal website">
+    <meta name="keywords" content="blog,developer,security,engineer,passwordless,webauthn,fido">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="WebAuthn Basic Web Client/Server"/>
+<meta name="twitter:description" content="In this tutorial we&rsquo;ll build a basic WebAuthn web client/server in go using Duo Labs&rsquo; awesome WebAuthn library. We&rsquo;ll also briefly go over the WebAuthn API. All code for this tutorial can be found here. Note this tutorial is not meant to be used in production but more as a starting point to building a functioning WebAuthn server and client, and as an introduction to the WebAuthn API.
+What Is WebAuthn WebAuthn is a standard that enables passwordless authentication (aka login) in the browser (and beyond)."/>
+
+    <meta property="og:title" content="WebAuthn Basic Web Client/Server" />
+<meta property="og:description" content="In this tutorial we&rsquo;ll build a basic WebAuthn web client/server in go using Duo Labs&rsquo; awesome WebAuthn library. We&rsquo;ll also briefly go over the WebAuthn API. All code for this tutorial can be found here. Note this tutorial is not meant to be used in production but more as a starting point to building a functioning WebAuthn server and client, and as an introduction to the WebAuthn API.
+What Is WebAuthn WebAuthn is a standard that enables passwordless authentication (aka login) in the browser (and beyond)." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.herbie.dev/blog/webauthn-basic-web-client-server/" />
+<meta property="article:published_time" content="2019-04-15T20:40:39-07:00"/>
+<meta property="article:modified_time" content="2019-04-15T20:40:39-07:00"/>
+
+
+    <base href="https://www.herbie.dev/blog/webauthn-basic-web-client-server/">
+    <title>
+  WebAuthn Basic Web Client/Server · Herbie&#39;s Blog
+</title>
+
+    <link rel="canonical" href="https://www.herbie.dev/blog/webauthn-basic-web-client-server/">
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700|Merriweather:300,700|Source+Code+Pro:400,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css" integrity="sha256-oSrCnRYXvHG31SBifqP2PM1uje7SJUyX0nTwO2RJV54=" crossorigin="anonymous" />
+
+    
+      
+      
+      <link rel="stylesheet" href="https://www.herbie.dev/css/coder.min.8881182b3ec36ffd9c735306f7e16ce9b1129ebc650e069e7c4114827e9d9b23.css" integrity="sha256-iIEYKz7Db/2cc1MG9&#43;Fs6bESnrxlDgaefEEUgn6dmyM=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+
+    
+      <link rel="stylesheet" href="https://www.herbie.dev/css/custom.css">
+    
+
+    <link rel="icon" type="image/png" href="https://www.herbie.dev/img/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="https://www.herbie.dev/img/favicon-16x16.png" sizes="16x16">
+
+    
+
+    <meta name="generator" content="Hugo 0.54.0" />
+  </head>
+
+  <body class=" ">
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="https://www.herbie.dev/">
+      Herbie&#39;s Blog
+    </a>
+    <input type="checkbox" id="menu-toggle" />
+    <label class="menu-button float-right" for="menu-toggle"><i class="fas fa-bars"></i></label>
+    <ul class="navigation-list">
+      
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://www.herbie.dev/about/">About</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://www.herbie.dev/blog/">Blog</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://www.herbie.dev/projects/">Projects</a>
+          </li>
+        
+      
+      
+    </ul>
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container page">
+  <article>
+    <header>
+      <h1>WebAuthn Basic Web Client/Server</h1>
+    </header>
+
+    
+
+<p>In this tutorial we&rsquo;ll build a basic WebAuthn web client/server in go using <a href="https://github.com/duo-labs/webauthn">Duo Labs&rsquo; awesome WebAuthn library</a>. We&rsquo;ll also briefly go over the WebAuthn API. All code for this tutorial can be found <a href="https://github.com/hbolimovsky/webauthn-example">here</a>. Note this tutorial is not meant to be used in production but more as a starting point to building a functioning WebAuthn server and client, and as an introduction to the WebAuthn API.</p>
+
+<h2 id="what-is-webauthn">What Is WebAuthn</h2>
+
+<p><a href="https://en.wikipedia.org/wiki/WebAuthn">WebAuthn</a> is a <a href="https://www.w3.org/TR/webauthn/">standard</a> that enables passwordless authentication (aka login) in the browser (and beyond). It essentially defines a common API for web applications to handle passwordless technologies via <a href="https://fidoalliance.org/fido2/">FIDO2</a> which includes things like public key cryptography, security keys (i.e. Yubikey), and biometrics (i.e. Touch ID/Face ID, Windows Hello).</p>
+
+<h2 id="what-you-need">What You Need</h2>
+
+<ul>
+<li>a WebAuthn compatible browser (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API#Browser_compatibility">list via Firefox</a> and <a href="https://duo.com/assets/img/blogv2/ctap-webauthn.png">list via Duo</a>)</li>
+<li>a security key such as a <a href="https://www.yubico.com/products/yubikey-hardware/">Yubikey</a> <strong>OR</strong> a biometric enabled device such as a MacBook with Touch ID or a Microsoft Surface Book with Windows Hello</li>
+</ul>
+
+<h2 id="resources">Resources</h2>
+
+<p>Incase you want to nerd out, here are some great WebAuthn resources</p>
+
+<ul>
+<li>overview (high level, with code): <a href="https://webauthn.guide/">Duo</a>, <a href="https://auth0.com/blog/introduction-to-web-authentication/">Auth0</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API#Browser_compatibility">Firefox</a></li>
+<li>demo: <a href="https://webauthn.io/">Duo</a>, <a href="https://webauthn.me/">Auth0</a></li>
+<li><a href="https://www.w3.org/TR/webauthn">official spec</a></li>
+<li><a href="https://www.imperialviolet.org/2018/03/27/webauthn.html">detailed blog post</a> by Adam Langley</li>
+</ul>
+
+<h2 id="code">Code</h2>
+
+<p>Now for the fun part! Let&rsquo;s code&hellip;</p>
+
+<h3 id="simple-client">Simple Client</h3>
+
+<p>Let&rsquo;s start with a super simple <code>index.html</code> that takes a username and performs Register and Login actions.</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html"><span style="color:#00f">&lt;!DOCTYPE html&gt;</span>
+&lt;html&gt;
+
+&lt;head&gt;
+  &lt;meta charset=<span style="color:#a31515">&#34;utf-8&#34;</span>&gt;
+  &lt;title&gt;WebAuthn Demo&lt;/title&gt;
+  &lt;script src=<span style="color:#a31515">&#34;https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js&#34;</span>&gt;&lt;/script&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+
+  Username:
+  &lt;br&gt;
+  &lt;input type=<span style="color:#a31515">&#34;text&#34;</span> name=<span style="color:#a31515">&#34;username&#34;</span> id=<span style="color:#a31515">&#34;email&#34;</span> placeholder=<span style="color:#a31515">&#34;i.e. foo@bar.com&#34;</span>&gt;
+  &lt;br&gt;
+  &lt;br&gt;
+  &lt;button onclick=<span style="color:#a31515">&#34;registerUser()&#34;</span>&gt;Register&lt;/button&gt;
+  &lt;button onclick=<span style="color:#a31515">&#34;loginUser()&#34;</span>&gt;Login&lt;/button&gt;
+
+  &lt;script&gt;
+
+    $(document).ready(<span style="color:#00f">function</span> () {
+        <span style="color:#008000">// TODO
+</span><span style="color:#008000"></span>    });
+
+  &lt;/script&gt;
+&lt;/body&gt;
+
+&lt;/html&gt;</code></pre></div>
+<p><code>index.html</code> should look something like this (let&rsquo;s call this style &lsquo;minimalist&rsquo; 🙃)</p>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/index_html_example.png" alt="index_html_example.png" /></p>
+
+<h2 id="browser-support-check">Browser Support Check</h2>
+
+<p>Before we do anything let&rsquo;s make sure the browser we&rsquo;re using supports WebAuthn. Inside the <code>$(document).ready</code> function add</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">$(document).ready(<span style="color:#00f">function</span> () {
+
+    <span style="color:#008000">// check whether current browser supports WebAuthn
+</span><span style="color:#008000"></span>    <span style="color:#00f">if</span> (!window.PublicKeyCredential) {
+        alert(<span style="color:#a31515">&#34;Error: this browser does not support WebAuthn&#34;</span>);
+        <span style="color:#00f">return</span>;
+    }
+});
+</code></pre></div>
+<h2 id="register">Register</h2>
+
+<p>At a high level, WebAuthn registration involves an <a href="https://www.w3.org/TR/webauthn/#authenticator">authenticator</a> generating a public/private key pair that is bound to information provided by the server (i.e. user info, organization info). An authenticator is an entity - could be a physical separate security key like a <a href="https://www.yubico.com/products/yubikey-hardware/">Yubikey</a>, could be built into a device like Touch ID/Face ID/Windows Hello, could be an app on a phone - that performs cryptographic operations such as key generation and signing (technically authenticators <a href="https://www.w3.org/TR/webauthn/#use-cases">do a little more</a> than just crypto).</p>
+
+<h2 id="begin-register">Begin Register</h2>
+
+<h3 id="part-1">Part 1</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_registration_mozilla_1.png" alt="webauthn_registration_mozilla_1.png" /></p>
+
+<p>All registration code will live in the <code>registerUser()</code> function (inside the <code>&lt;script&gt;</code> tag). First we&rsquo;ll get the username from the text input field. Then to kick off the registration process, we&rsquo;ll make a <code>GET</code> call to <code>/register/begin/{username}</code>. This will return some information required to generate the public/private key pair.</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#00f">function</span> registerUser() {
+
+	username = $(<span style="color:#a31515">&#34;#email&#34;</span>).val()
+	<span style="color:#00f">if</span> (username === <span style="color:#a31515">&#34;&#34;</span>) {
+	  alert(<span style="color:#a31515">&#34;please enter a username&#34;</span>);
+	  <span style="color:#00f">return</span>;
+	}
+
+	$.get(
+	  <span style="color:#a31515">&#39;/register/begin/&#39;</span> + username,
+	  <span style="color:#00f">null</span>,
+	  <span style="color:#00f">function</span> (data) {
+		<span style="color:#00f">return</span> data
+	  },
+	  <span style="color:#a31515">&#39;json&#39;</span>)
+	  .then((credentialCreationOptions) =&gt; {
+		  <span style="color:#008000">// TODO
+</span><span style="color:#008000"></span>	  });
+}
+</code></pre></div>
+<p>Now let&rsquo;s implement the server portion of Begin Register.</p>
+
+<p>Create a new file called <code>server.go</code> (I put all the files in the root directory for simplicity/laziness) with the following:</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">package</span> main
+
+<span style="color:#00f">import</span> (
+	<span style="color:#a31515">&#34;log&#34;</span>
+	<span style="color:#a31515">&#34;net/http&#34;</span>
+
+	<span style="color:#a31515">&#34;github.com/duo-labs/webauthn.io/session&#34;</span>
+	<span style="color:#a31515">&#34;github.com/duo-labs/webauthn/webauthn&#34;</span>
+	<span style="color:#a31515">&#34;github.com/gorilla/mux&#34;</span>
+)
+
+<span style="color:#00f">var</span> webAuthn *webauthn.WebAuthn
+<span style="color:#00f">var</span> sessionStore *session.Store
+<span style="color:#00f">var</span> userDB *userdb
+
+<span style="color:#00f">func</span> main() {
+
+	<span style="color:#00f">var</span> err <span style="color:#2b91af">error</span>
+	webAuthn, err = webauthn.New(&amp;webauthn.Config{
+		RPDisplayName: <span style="color:#a31515">&#34;Foobar Corp.&#34;</span>,     <span style="color:#008000">// display name for your site
+</span><span style="color:#008000"></span>		RPID:          <span style="color:#a31515">&#34;localhost&#34;</span>,        <span style="color:#008000">// generally the domain name for your site
+</span><span style="color:#008000"></span>	})
+
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Fatal(<span style="color:#a31515">&#34;failed to create WebAuthn from config:&#34;</span>, err)
+	}
+
+	userDB = DB()
+
+	sessionStore, err = session.NewStore()
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Fatal(<span style="color:#a31515">&#34;failed to create session store:&#34;</span>, err)
+	}
+
+	r := mux.NewRouter()
+
+	r.HandleFunc(<span style="color:#a31515">&#34;/register/begin/{username}&#34;</span>, BeginRegistration).Methods(<span style="color:#a31515">&#34;GET&#34;</span>)
+
+	r.PathPrefix(<span style="color:#a31515">&#34;/&#34;</span>).Handler(http.FileServer(http.Dir(<span style="color:#a31515">&#34;./&#34;</span>)))
+
+	serverAddress := <span style="color:#a31515">&#34;:8080&#34;</span>
+	log.Println(<span style="color:#a31515">&#34;starting server at&#34;</span>, serverAddress)
+	log.Fatal(http.ListenAndServe(serverAddress, r))
+}</code></pre></div>
+<p>Let&rsquo;s break down what we just added.</p>
+
+<p><strong>webAuthn</strong> (type <code>webauthn.WebAuthn</code>)</p>
+
+<p>The primary interface that the <code>github.com/duo-labs/webauthn</code> package exposes. To initialize it, we provide a config with two fields (there are more optional fields), all related to the <a href="https://www.w3.org/TR/webauthn/#webauthn-relying-party">Relying Party (RP)</a> which is the web application/entity that is registering and authenticating the user. The fields are <a href="https://www.w3.org/TR/webauthn/#dom-publickeycredentialentity-name">RPDisplayName</a>: the display name for the RP&rsquo;s site (i.e. Foobar Corp.) and <a href="https://www.w3.org/TR/webauthn/#rp-id">RPID</a>: based on the RP&rsquo;s domain name (i.e. foobar.com).</p>
+
+<p><strong>sessionStore</strong> (type <code>*session.Store</code>)</p>
+
+<p>A nice wrapper around a cookie store via <a href="https://github.com/duo-labs/webauthn.io"><code>github.com/duo-labs/webauthn.io</code></a></p>
+
+<p><strong>userDB</strong> (type <code>*userdb</code>)</p>
+
+<p>Provides a mock database that stores and retrieves users by their username. Add the following <code>userdb.go</code> file</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">package</span> main
+
+<span style="color:#00f">import</span> (
+	<span style="color:#a31515">&#34;fmt&#34;</span>
+	<span style="color:#a31515">&#34;sync&#34;</span>
+)
+
+<span style="color:#00f">type</span> userdb <span style="color:#00f">struct</span> {
+	users <span style="color:#00f">map</span>[<span style="color:#2b91af">string</span>]*User
+	mu    sync.RWMutex
+}
+
+<span style="color:#00f">var</span> db *userdb
+
+<span style="color:#008000">// DB returns a userdb singleton
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> DB() *userdb {
+
+	<span style="color:#00f">if</span> db == <span style="color:#00f">nil</span> {
+		db = &amp;userdb{
+			users: make(<span style="color:#00f">map</span>[<span style="color:#2b91af">string</span>]*User),
+		}
+	}
+
+	<span style="color:#00f">return</span> db
+}
+
+<span style="color:#008000">// GetUser returns a *User by the user&#39;s username
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (db *userdb) GetUser(name <span style="color:#2b91af">string</span>) (*User, <span style="color:#2b91af">error</span>) {
+
+	db.mu.Lock()
+	<span style="color:#00f">defer</span> db.mu.Unlock()
+	user, ok := db.users[name]
+	<span style="color:#00f">if</span> !ok {
+		<span style="color:#00f">return</span> &amp;User{}, fmt.Errorf(<span style="color:#a31515">&#34;error getting user &#39;%s&#39;: does not exist&#34;</span>, name)
+	}
+
+	<span style="color:#00f">return</span> user, <span style="color:#00f">nil</span>
+}
+
+<span style="color:#008000">// PutUser stores a new user by the user&#39;s username
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (db *userdb) PutUser(user *User) {
+
+	db.mu.Lock()
+	<span style="color:#00f">defer</span> db.mu.Unlock()
+	db.users[user.name] = user
+}</code></pre></div>
+<p>You&rsquo;ll notice reference to <code>User</code>, which is what <code>github.com/duo-labs/webauthn</code> uses to interact with WebAuthn users. To implement <code>User</code>, we need to implement <a href="https://github.com/duo-labs/webauthn/blob/master/webauthn/user.go">duo-lab&rsquo;s user interface</a>. In a new <code>user.go</code> file, add</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">package</span> main
+
+<span style="color:#00f">import</span> (
+	<span style="color:#a31515">&#34;crypto/rand&#34;</span>
+	<span style="color:#a31515">&#34;encoding/binary&#34;</span>
+
+	<span style="color:#a31515">&#34;github.com/duo-labs/webauthn/protocol&#34;</span>
+	<span style="color:#a31515">&#34;github.com/duo-labs/webauthn/webauthn&#34;</span>
+)
+
+<span style="color:#008000">// User represents the user model
+</span><span style="color:#008000"></span><span style="color:#00f">type</span> User <span style="color:#00f">struct</span> {
+	id          <span style="color:#2b91af">uint64</span>
+	name        <span style="color:#2b91af">string</span>
+	displayName <span style="color:#2b91af">string</span>
+	credentials []webauthn.Credential
+}
+
+<span style="color:#008000">// NewUser creates and returns a new User
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> NewUser(name <span style="color:#2b91af">string</span>, displayName <span style="color:#2b91af">string</span>) *User {
+
+	user := &amp;User{}
+	user.id = randomUint64()
+	user.name = name
+	user.displayName = displayName
+	<span style="color:#008000">// user.credentials = []webauthn.Credential{}
+</span><span style="color:#008000"></span>
+	<span style="color:#00f">return</span> user
+}
+
+<span style="color:#00f">func</span> randomUint64() <span style="color:#2b91af">uint64</span> {
+	buf := make([]<span style="color:#2b91af">byte</span>, 8)
+	rand.Read(buf)
+	<span style="color:#00f">return</span> binary.LittleEndian.Uint64(buf)
+}
+
+<span style="color:#008000">// WebAuthnID returns the user&#39;s ID
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u User) WebAuthnID() []<span style="color:#2b91af">byte</span> {
+	buf := make([]<span style="color:#2b91af">byte</span>, binary.MaxVarintLen64)
+	binary.PutUvarint(buf, uint64(u.id))
+	<span style="color:#00f">return</span> buf
+}
+
+<span style="color:#008000">// WebAuthnName returns the user&#39;s username
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u User) WebAuthnName() <span style="color:#2b91af">string</span> {
+	<span style="color:#00f">return</span> u.name
+}
+
+<span style="color:#008000">// WebAuthnDisplayName returns the user&#39;s display name
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u User) WebAuthnDisplayName() <span style="color:#2b91af">string</span> {
+	<span style="color:#00f">return</span> u.displayName
+}
+
+<span style="color:#008000">// WebAuthnIcon is not (yet) implemented
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u User) WebAuthnIcon() <span style="color:#2b91af">string</span> {
+	<span style="color:#00f">return</span> <span style="color:#a31515">&#34;&#34;</span>
+}
+
+<span style="color:#008000">// AddCredential associates the credential to the user
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u *User) AddCredential(cred webauthn.Credential) {
+	u.credentials = append(u.credentials, cred)
+}
+
+<span style="color:#008000">// WebAuthnCredentials returns credentials owned by the user
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u User) WebAuthnCredentials() []webauthn.Credential {
+	<span style="color:#00f">return</span> u.credentials
+}</code></pre></div>
+<p>Now back to <code>server.go</code>. Let&rsquo;s implement the <code>BeginRegistration</code> handler. We&rsquo;ll start by pulling the <code>username</code> path variable from the request</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> BeginRegistration(w http.ResponseWriter, r *http.Request) {
+
+	<span style="color:#008000">// get username
+</span><span style="color:#008000"></span>	vars := mux.Vars(r)
+	username, ok := vars[<span style="color:#a31515">&#34;username&#34;</span>]
+	<span style="color:#00f">if</span> !ok {
+		jsonResponse(w, fmt.Errorf(<span style="color:#a31515">&#34;must supply a valid username i.e. foo@bar.com&#34;</span>), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+    }
+}</code></pre></div>
+<p>Also add the <code>jsonResponse()</code> helper method (from <a href="https://github.com/duo-labs/webauthn.io/blob/3f03b482d21476f6b9fb82b2bf1458ff61a61d41/server/response.go#L15">duo-labs/webauthn.io</a>)</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> jsonResponse(w http.ResponseWriter, d <span style="color:#00f">interface</span>{}, c <span style="color:#2b91af">int</span>) {
+	dj, err := json.Marshal(d)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		http.Error(w, <span style="color:#a31515">&#34;Error creating JSON response&#34;</span>, http.StatusInternalServerError)
+	}
+	w.Header().Set(<span style="color:#a31515">&#34;Content-Type&#34;</span>, <span style="color:#a31515">&#34;application/json&#34;</span>)
+	w.WriteHeader(c)
+	fmt.Fprintf(w, <span style="color:#a31515">&#34;%s&#34;</span>, dj)
+}</code></pre></div>
+<p>Now let&rsquo;s attempt to get the user and create a new user if they don&rsquo;t exist. It might seem weird to check for an existing user, but remember we&rsquo;re registering an authenticator <em>to</em> a user who can exist already. For example, Bob can register a MacBook to his account, then register a Yubikey to that same account. Below the code we just added, add</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#008000">// get user
+</span><span style="color:#008000"></span>user, err := userDB.GetUser(username)
+<span style="color:#008000">// user doesn&#39;t exist, create new user
+</span><span style="color:#008000"></span><span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+    displayName := strings.Split(username, <span style="color:#a31515">&#34;@&#34;</span>)[0]
+    user = NewUser(username, displayName)
+    userDB.PutUser(user)
+}</code></pre></div>
+<p>Note how we&rsquo;re using the email prefix as the display name - this is out of convenience (and laziness). <code>duo-labs/webauthn</code> has a high level function <code>BeginRegistration()</code> that handles - you guessed it - the beginning of the registration process.</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#008000">// generate PublicKeyCredentialCreationOptions, session data
+</span><span style="color:#008000"></span>options, sessionData, err := webAuthn.BeginRegistration(user)
+
+<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+    log.Println(err)
+    jsonResponse(w, err.Error(), http.StatusInternalServerError)
+    <span style="color:#00f">return</span>
+}</code></pre></div>
+<p>Let&rsquo;s break this down</p>
+
+<p><strong>options</strong> (type <code>protocol.CredentialCreation</code>)</p>
+
+<p>An implementation of <a href="https://www.w3.org/TR/webauthn/#dictdef-publickeycredentialcreationoptions"><code>PublicKeyCredentialCreationOptions</code></a> which contains information necessary for the authenticator to generate the public/private key pair such as Relying Party info (i.e. what we set in <code>webauthn.Config</code>), user info (i.e. a unique user handle ID), and a randomly generated challenge (to be signed by the authenticator)<a href="#notes">*</a>.</p>
+
+<p><strong>sessionData</strong> (type <code>webauthn.SessionData</code>)</p>
+
+<p>Contains information required to verify the signed challenge, like the challenge itself as well as the user&rsquo;s id.</p>
+
+<p>To finish <code>BeginRegistration()</code> we&rsquo;ll store the session data and return the options to the client</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">	<span style="color:#008000">// store session data as marshaled JSON
+</span><span style="color:#008000"></span>	err = sessionStore.SaveWebauthnSession(<span style="color:#a31515">&#34;registration&#34;</span>, sessionData, r, w)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusInternalServerError)
+		<span style="color:#00f">return</span>
+	}
+
+	jsonResponse(w, options, http.StatusOK)
+}</code></pre></div>
+<p>Putting it all together, <code>BeginRegistration()</code> looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> BeginRegistration(w http.ResponseWriter, r *http.Request) {
+
+	<span style="color:#008000">// get username
+</span><span style="color:#008000"></span>	vars := mux.Vars(r)
+	username, ok := vars[<span style="color:#a31515">&#34;username&#34;</span>]
+	<span style="color:#00f">if</span> !ok {
+		jsonResponse(w, fmt.Errorf(<span style="color:#a31515">&#34;must supply a valid username i.e. foo@bar.com&#34;</span>), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+	<span style="color:#008000">// get user
+</span><span style="color:#008000"></span>	user, err := userDB.GetUser(username)
+	<span style="color:#008000">// user doesn&#39;t exist, create new user
+</span><span style="color:#008000"></span>	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		displayName := strings.Split(username, <span style="color:#a31515">&#34;@&#34;</span>)[0]
+		user = NewUser(username, displayName)
+		userDB.PutUser(user)
+	}
+
+    <span style="color:#008000">// generate PublicKeyCredentialCreationOptions, session data
+</span><span style="color:#008000"></span>	options, sessionData, err := webAuthn.BeginRegistration(user)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusInternalServerError)
+		<span style="color:#00f">return</span>
+	}
+
+	<span style="color:#008000">// store session data as marshaled JSON
+</span><span style="color:#008000"></span>	err = sessionStore.SaveWebauthnSession(<span style="color:#a31515">&#34;registration&#34;</span>, sessionData, r, w)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusInternalServerError)
+		<span style="color:#00f">return</span>
+	}
+
+	jsonResponse(w, options, http.StatusOK)
+}</code></pre></div>
+<p>Now back to the JS client, in <code>registerUser()</code> the <code>credentialCreationOptions</code> that gets returned looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{
+  &#34;publicKey&#34;: {
+    &#34;challenge&#34;: <span style="color:#a31515">&#34;FsxBWwUb1jOFRA3ILdkCsPdCZkzohvd3JrCNeDqWpJQ=&#34;</span>,
+    &#34;rp&#34;: {
+      &#34;name&#34;: <span style="color:#a31515">&#34;Foobar Corp.&#34;</span>,
+      &#34;id&#34;: <span style="color:#a31515">&#34;localhost&#34;</span>
+    },
+    &#34;user&#34;: {
+      &#34;name&#34;: <span style="color:#a31515">&#34;foo@bar.com&#34;</span>,
+      &#34;displayName&#34;: <span style="color:#a31515">&#34;foo&#34;</span>,
+      &#34;id&#34;: <span style="color:#a31515">&#34;xOywiL6f3q9EAA==&#34;</span>
+    },
+    &#34;pubKeyCredParams&#34;: [
+      {
+        &#34;type&#34;: <span style="color:#a31515">&#34;public-key&#34;</span>,
+        &#34;alg&#34;: -7
+      },
+      {
+        &#34;type&#34;: <span style="color:#a31515">&#34;public-key&#34;</span>,
+        &#34;alg&#34;: -35
+      },
+      <span style="">...</span>
+      {
+        &#34;type&#34;: <span style="color:#a31515">&#34;public-key&#34;</span>,
+        &#34;alg&#34;: -8
+      }
+    ],
+    &#34;authenticatorSelection&#34;: {
+      &#34;userVerification&#34;: <span style="color:#a31515">&#34;preferred&#34;</span>
+    },
+    &#34;timeout&#34;: 60000,
+    &#34;attestation&#34;: <span style="color:#a31515">&#34;direct&#34;</span>
+  }
+}</code></pre></div>
+<p>The <strong>publicKey</strong> (type <a href="https://www.w3.org/TR/webauthn/#dictionary-makecredentialoptions"><code>PublicKeyCredentialCreationOptions</code></a>) contains a lot of what we set, like the relying party (<code>rp</code> field), user (<code>user</code> field), and challenge (<code>challenge</code> field). <code>github.com/duo-labs/webauthn</code> autoset some properties we don&rsquo;t really have to worry about.</p>
+
+<h3 id="part-2">Part 2</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_registration_mozilla_2.png" alt="webauthn_registration_mozilla_2.png" /></p>
+
+<p>Back with <code>registerUser()</code> in <code>index.html</code>, to finish the Begin Register process, we call <code>navigator.credentials.create()</code> (part of the <a href="https://www.w3.org/TR/credential-management-1/#dom-credentialscontainer-create">Credential Management API</a>) with <strong>credentialCreationOptions.publicKey</strong></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((credentialCreationOptions) =&gt; {
+
+  credentialCreationOptions.publicKey.challenge = bufferDecode(credentialCreationOptions.publicKey.challenge);
+  credentialCreationOptions.publicKey.user.id = bufferDecode(credentialCreationOptions.publicKey.user.id);
+
+  <span style="color:#00f">return</span> navigator.credentials.create({
+    publicKey: credentialCreationOptions.publicKey
+  })
+})
+.then((credential) =&gt; {
+  <span style="color:#008000">// TODO
+</span><span style="color:#008000"></span>})
+</code></pre></div>
+<p>To help us convert base64 encoded data to an <code>ArrayBuffer</code> add</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#008000">// Base64 to ArrayBuffer
+</span><span style="color:#008000"></span><span style="color:#00f">function</span> bufferDecode(value) {
+    <span style="color:#00f">return</span> Uint8Array.from(atob(value), c =&gt; c.charCodeAt(0));
+}
+</code></pre></div>
+<h3 id="part-3">Part 3</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_registration_mozilla_3.png" alt="webauthn_registration_mozilla_3.png" /></p>
+
+<p>Your <a href="https://www.w3.org/TR/credential-management-1/#dom-credentialscontainer-create">browser</a> and <a href="https://www.w3.org/TR/webauthn/#op-make-cred">authenticator</a> take over from here. Implementations vary, for example your browser might ask you to choose an authenticator, then your authenticator could prompt you to perform a gesture (i.e. press button, scan finger).</p>
+
+<h2 id="finish-register">Finish Register</h2>
+
+<h3 id="part-4">Part 4</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_registration_mozilla_4.png" alt="webauthn_registration_mozilla_4.png" /></p>
+
+<p>If all goes well the authenticator/browser will return an <a href="https://www.w3.org/TR/webauthn/#authenticatorattestationresponse"><code>AuthenticatorAttestationResponse</code></a> that looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{
+  &#34;id&#34;: <span style="color:#a31515">&#34;ABJcniVJwrH45aueEJJsD0LFTGMUxot1sHCOttym_p7rNPF72Zc_NcGo05j3KzDkU5fWELqRz7h9&#34;</span>,
+  &#34;rawId&#34;: <span style="color:#a31515">&#34;ABJcniVJwrH45aueEJJsD0LFTGMUxot1sHCOttym_p7rNPF72Zc_NcGo05j3KzDkU5fWELqRz7h9&#34;</span>,
+  &#34;type&#34;: <span style="color:#a31515">&#34;public-key&#34;</span>,
+  &#34;response&#34;: {
+    &#34;attestationObject&#34;: <span style="color:#a31515">&#34;o2NmbXRmcGFja2VkZ2F0dFN0bXSiY2FsZyZjc2lnWEcwRQIhAIMEvEj1LKkmGNQuL0zeiv7dAzQmZynWkIuzuoGKAus8AiBUQBxCjGwCenhRWbJut2PyeF_7A3FJ3Jx8PVDOhuqUFGhhdXRoRGF0YVi9SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NFXMPTf63OAAI1vMYKZIsLJfHwVQMAOQASXJ4lScKx-OWrnhCSbA9CxUxjFMaLdbBwjrbcpv6e6zTxe9mXPzXBqNOY9ysw5FOX1hC6kc-4faUBAgMmIAEhWCC6NdvZp8idlfpaTuREhZ3YHOx2QNam7HQI5-uDx1JFRiJYIKe0q8Ax92EtplrfOtvfIxtOt7_XEvHYRQy16O-MpDjk&#34;</span>,
+    &#34;clientDataJSON&#34;: <span style="color:#a31515">&#34;eyJjaGFsbGVuZ2UiOiJGc3hCV3dVYjFqT0ZSQTNJTGRrQ3NQZENaa3pvaHZkM0pyQ05lRHFXcEpRIiwib3JpZ2luIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwidHlwZSI6IndlYmF1dGhuLmNyZWF0ZSJ9&#34;</span>
+  }
+}</code></pre></div>
+<p>The <code>AuthenticatorAttestationResponse</code> contains attestation information such as the newly generated public key, the attestation response, as well as information necessary for the server to verify the attestation/response (i.e. user id, client data).</p>
+
+<h3 id="part-5">Part 5</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_registration_mozilla_5.png" alt="webauthn_registration_mozilla_5.png" /></p>
+
+<p>As our last step in the registration process we return the <a href="https://www.w3.org/TR/webauthn/#iface-authenticatorresponse"><code>AuthenticatorAttestationResponse</code></a> to the server by performing a <code>POST</code> to <code>/register/finish/{username}</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((credential) =&gt; {
+
+  <span style="color:#00f">let</span> attestationObject = credential.response.attestationObject;
+  <span style="color:#00f">let</span> clientDataJSON = credential.response.clientDataJSON;
+  <span style="color:#00f">let</span> rawId = credential.rawId;
+
+  $.post(
+    <span style="color:#a31515">&#39;/register/finish/&#39;</span> + username,
+    JSON.stringify({
+      id: credential.id,
+      rawId: bufferEncode(rawId),
+      type: credential.type,
+      response: {
+        attestationObject: bufferEncode(attestationObject),
+        clientDataJSON: bufferEncode(clientDataJSON),
+      },
+    }),
+    <span style="color:#00f">function</span> (data) {
+      <span style="color:#00f">return</span> data
+    },
+    <span style="color:#a31515">&#39;json&#39;</span>)
+})
+</code></pre></div>
+<p>We need to add a helper function <code>bufferEncode()</code> to convert ArrayBuffers to URLBase64</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#008000">// ArrayBuffer to URLBase64
+</span><span style="color:#008000"></span><span style="color:#00f">function</span> bufferEncode(value) {
+  <span style="color:#00f">return</span> btoa(String.fromCharCode.apply(<span style="color:#00f">null</span>, <span style="color:#00f">new</span> Uint8Array(value)))
+    .replace(<span style="color:#a31515">/\+/g</span>, <span style="color:#a31515">&#34;-&#34;</span>)
+    .replace(<span style="color:#a31515">/\//g</span>, <span style="color:#a31515">&#34;_&#34;</span>)
+    .replace(<span style="color:#a31515">/=/g</span>, <span style="color:#a31515">&#34;&#34;</span>);;
+}
+</code></pre></div>
+<p>Adding some success/fail handling and putting it all together, <code>registerUser()</code> looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#00f">function</span> registerUser() {
+
+  username = $(<span style="color:#a31515">&#34;#email&#34;</span>).val()
+  <span style="color:#00f">if</span> (username === <span style="color:#a31515">&#34;&#34;</span>) {
+    alert(<span style="color:#a31515">&#34;please enter a username&#34;</span>);
+    <span style="color:#00f">return</span>;
+  }
+
+  $.get(
+    <span style="color:#a31515">&#39;/register/begin/&#39;</span> + username,
+    <span style="color:#00f">null</span>,
+    <span style="color:#00f">function</span> (data) {
+      <span style="color:#00f">return</span> data
+    },
+    <span style="color:#a31515">&#39;json&#39;</span>)
+    .then((credentialCreationOptions) =&gt; {
+
+      credentialCreationOptions.publicKey.challenge = bufferDecode(credentialCreationOptions.publicKey.challenge);
+      credentialCreationOptions.publicKey.user.id = bufferDecode(credentialCreationOptions.publicKey.user.id);
+
+      <span style="color:#00f">return</span> navigator.credentials.create({
+        publicKey: credentialCreationOptions.publicKey
+      })
+    })
+    .then((credential) =&gt; {
+
+      <span style="color:#00f">let</span> attestationObject = credential.response.attestationObject;
+      <span style="color:#00f">let</span> clientDataJSON = credential.response.clientDataJSON;
+      <span style="color:#00f">let</span> rawId = credential.rawId;
+
+      $.post(
+        <span style="color:#a31515">&#39;/register/finish/&#39;</span> + username,
+        JSON.stringify({
+          id: credential.id,
+          rawId: bufferEncode(rawId),
+          type: credential.type,
+          response: {
+            attestationObject: bufferEncode(attestationObject),
+            clientDataJSON: bufferEncode(clientDataJSON),
+          },
+        }),
+        <span style="color:#00f">function</span> (data) {
+          <span style="color:#00f">return</span> data
+        },
+        <span style="color:#a31515">&#39;json&#39;</span>)
+    })
+    .then((success) =&gt; {
+      alert(<span style="color:#a31515">&#34;successfully registered &#34;</span> + username + <span style="color:#a31515">&#34;!&#34;</span>)
+      <span style="color:#00f">return</span>
+    })
+    .<span style="color:#00f">catch</span>((error) =&gt; {
+      console.log(error)
+      alert(<span style="color:#a31515">&#34;failed to register &#34;</span> + username)
+    })
+}
+</code></pre></div>
+<h3 id="part-6">Part 6</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_registration_mozilla_6.png" alt="webauthn_registration_mozilla_6.png" /></p>
+
+<p>The server side portion of registering a new credential <a href="https://www.w3.org/TR/webauthn/#registering-a-new-credential">involves 19 steps</a>! Luckily <code>github.com/duo-labs/webauthn</code> exposes a simple <code>FinishRegistration()</code> function. Briefly, these steps include validating client data (i.e. domain name), authenticator data, and the attestation statement (i.e. the signature). <code>FinishRegistration()</code>  takes the <strong>user</strong>, <strong>sessionData</strong> (what we stored in <code>BeginRegister()</code>), and the <code>*http.Request</code>, and returns a <code>webauthn.Credential</code> if everything goes well (and an <code>error</code> if it doesn&rsquo;t). Finally we&rsquo;ll store the credential with the user. To actually implement this server side, add a handler in <code>main()</code> (inside <code>server.go</code>)</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">	r := mux.NewRouter()
+
+	r.HandleFunc(<span style="color:#a31515">&#34;/register/begin/{username}&#34;</span>, BeginRegistration).Methods(<span style="color:#a31515">&#34;GET&#34;</span>)
+	r.HandleFunc(<span style="color:#a31515">&#34;/register/finish/{username}&#34;</span>, FinishRegistration).Methods(<span style="color:#a31515">&#34;POST&#34;</span>)
+
+	r.PathPrefix(<span style="color:#a31515">&#34;/&#34;</span>).Handler(http.FileServer(http.Dir(<span style="color:#a31515">&#34;./&#34;</span>)))</code></pre></div>
+<p>and implement the function <code>FinishRegistration()</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> FinishRegistration(w http.ResponseWriter, r *http.Request) {
+
+	<span style="color:#008000">// get username
+</span><span style="color:#008000"></span>	vars := mux.Vars(r)
+	username := vars[<span style="color:#a31515">&#34;username&#34;</span>]
+
+	<span style="color:#008000">// get user
+</span><span style="color:#008000"></span>	user, err := userDB.GetUser(username)
+	<span style="color:#008000">// user doesn&#39;t exist
+</span><span style="color:#008000"></span>	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+	<span style="color:#008000">// load the session data
+</span><span style="color:#008000"></span>	sessionData, err := sessionStore.GetWebauthnSession(<span style="color:#a31515">&#34;registration&#34;</span>, r)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+	credential, err := webAuthn.FinishRegistration(user, sessionData, r)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+	user.AddCredential(*credential)
+
+	jsonResponse(w, <span style="color:#a31515">&#34;Registration Success&#34;</span>, http.StatusOK)
+	<span style="color:#00f">return</span>
+}</code></pre></div>
+<p>And just like that, we finished implementing WebAuthn registration! Here&rsquo;s roughly what we just built looks like in Chrome</p>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/register_example.gif" alt="register_example.gif" /></p>
+
+<h2 id="login">Login</h2>
+
+<p>At a high level, WebAuthn login (aka authentication) involves an authenticator signing a challenge provided by the server using the previously generated private key.</p>
+
+<h2 id="begin-login">Begin Login</h2>
+
+<h3 id="part-1-1">Part 1</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_login_mozilla_1.png" alt="webauthn_login_mozilla_1.png" /></p>
+
+<p>Let&rsquo;s start with <code>loginUser()</code> in <code>index.html</code> by getting the username and making a <code>GET</code> call to <code>/login/begin/{username}</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#00f">function</span> loginUser() {
+
+  username = $(<span style="color:#a31515">&#34;#email&#34;</span>).val()
+  <span style="color:#00f">if</span> (username === <span style="color:#a31515">&#34;&#34;</span>) {
+    alert(<span style="color:#a31515">&#34;please enter a username&#34;</span>);
+    <span style="color:#00f">return</span>;
+  }
+
+  $.get(
+    <span style="color:#a31515">&#39;/login/begin/&#39;</span> + username,
+    <span style="color:#00f">null</span>,
+    <span style="color:#00f">function</span> (data) {
+      <span style="color:#00f">return</span> data
+    },
+    <span style="color:#a31515">&#39;json&#39;</span>)
+    .then((credentialRequestOptions) =&gt; {
+        <span style="color:#008000">// TODO
+</span><span style="color:#008000"></span>    })
+}
+</code></pre></div>
+<p>In <code>server.go</code>, add a Begin Login handler</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">r.HandleFunc(<span style="color:#a31515">&#34;/register/begin/{username}&#34;</span>, BeginRegistration).Methods(<span style="color:#a31515">&#34;GET&#34;</span>)
+r.HandleFunc(<span style="color:#a31515">&#34;/register/finish/{username}&#34;</span>, FinishRegistration).Methods(<span style="color:#a31515">&#34;POST&#34;</span>)
+r.HandleFunc(<span style="color:#a31515">&#34;/login/begin/{username}&#34;</span>, BeginLogin).Methods(<span style="color:#a31515">&#34;GET&#34;</span>)</code></pre></div>
+<p>Begin Login is very similar to Begin Register. First we call <code>duo-labs/webAuthn</code>s <code>BeginLogin()</code> with a <strong>user</strong> (and optional <code>LoginOption</code>s) and get returned <strong>options</strong> (implementation of <a href="https://www.w3.org/TR/webauthn/#dictdef-publickeycredentialrequestoptions"><code>PublicKeyCredentialRequestOptions</code></a> discussed below), <strong>sessionData</strong> (used to verify the returned assertion), and an <strong>error</strong> if anything goes wrong. We store the session data and return the <strong>options</strong> to the user</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> BeginLogin(w http.ResponseWriter, r *http.Request) {
+
+	<span style="color:#008000">// get username
+</span><span style="color:#008000"></span>	vars := mux.Vars(r)
+	username := vars[<span style="color:#a31515">&#34;username&#34;</span>]
+
+	<span style="color:#008000">// get user
+</span><span style="color:#008000"></span>	user, err := userDB.GetUser(username)
+
+	<span style="color:#008000">// user doesn&#39;t exist
+</span><span style="color:#008000"></span>	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+    <span style="color:#008000">// generate PublicKeyCredentialRequestOptions, session data
+</span><span style="color:#008000"></span>	options, sessionData, err := webAuthn.BeginLogin(user)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusInternalServerError)
+		<span style="color:#00f">return</span>
+	}
+
+	<span style="color:#008000">// store session data as marshaled JSON
+</span><span style="color:#008000"></span>	err = sessionStore.SaveWebauthnSession(<span style="color:#a31515">&#34;authentication&#34;</span>, sessionData, r, w)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusInternalServerError)
+		<span style="color:#00f">return</span>
+	}
+
+	jsonResponse(w, options, http.StatusOK)
+}</code></pre></div>
+<p>The <strong>credentialRequestOptions</strong> (type <a href="https://www.w3.org/TR/webauthn/#dictdef-publickeycredentialrequestoptions"><code>PublicKeyCredentialRequestOptions</code></a>) only requires a <code>challenge</code> but has additional <a href="https://www.w3.org/TR/webauthn/#dictdef-publickeycredentialrequestoptions">option fields</a>, and looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{
+  &#34;credentialRequestOptions&#34;: {
+    &#34;publicKey&#34;: {
+      &#34;challenge&#34;: <span style="color:#a31515">&#34;AZeYdiLc1hGDU0wo9NOZmZG9vu+aPnff2aPFgJEw1HI=&#34;</span>,
+      &#34;timeout&#34;: 60000,
+      &#34;rpId&#34;: <span style="color:#a31515">&#34;localhost&#34;</span>,
+      &#34;allowCredentials&#34;: [
+        {
+          &#34;type&#34;: <span style="color:#a31515">&#34;public-key&#34;</span>,
+          &#34;id&#34;: <span style="color:#a31515">&#34;ABJcniVJwrH45aueEJJsD0LFTGMUxot1sHCOttym/p7rNPF72Zc/NcGo05j3KzDkU5fWELqRz7h9&#34;</span>
+        }
+      ]
+    }
+  }
+}</code></pre></div>
+<p>Important fields to take note of are <a href="https://www.w3.org/TR/webauthn/#dom-publickeycredentialrequestoptions-challenge"><code>challenge</code></a>, random bits (different than the challenge in Register) that the authenticator will sign over using the private key created in the Register process, and <a href="https://www.w3.org/TR/webauthn/#dom-publickeycredentialrequestoptions-allowcredentials"><code>allowCredentials</code></a> which specifies which public key credentials are acceptable (i.e. previously registered ones).</p>
+
+<h3 id="part-2-1">Part 2</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_login_mozilla_2.png" alt="webauthn_login_mozilla_2.png" /></p>
+
+<p>To finish the Begin Login process, we call <code>navigator.credentials.get()</code> (part of the <a href="https://www.w3.org/TR/credential-management-1/#dom-credentialscontainer-get">Credential Management API</a>) with <strong>credentialCreationOptions.publicKey</strong> (remember to decode encoded fields into ArrayBuffers), and the browser takes care of the rest. Back in <code>index.html</code> inside <code>loginUser()</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((credentialRequestOptions) =&gt; {
+
+  credentialRequestOptions.publicKey.challenge = bufferDecode(credentialRequestOptions.publicKey.challenge);
+  credentialRequestOptions.publicKey.allowCredentials.forEach(<span style="color:#00f">function</span> (listItem) {
+    listItem.id = bufferDecode(listItem.id)
+  });
+
+  <span style="color:#00f">return</span> navigator.credentials.get({
+    publicKey: credentialRequestOptions.publicKey
+  })
+})
+.then((assertion) =&gt; {
+    <span style="color:#008000">// TODO
+</span><span style="color:#008000"></span>})
+</code></pre></div>
+<h3 id="part-3-1">Part 3</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_login_mozilla_3.png" alt="webauthn_login_mozilla_3.png" /></p>
+
+<p>Your <a href="https://www.w3.org/TR/credential-management-1/#dom-credentialscontainer-get">browser</a> and <a href="https://www.w3.org/TR/webauthn/#op-get-assertion">authenticator</a> take over from here. Implementations vary, for example your authenticator could prompt you to perform a gesture (i.e. press button, scan finger).</p>
+
+<h2 id="finish-login">Finish Login</h2>
+
+<h3 id="part-4-1">Part 4</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_login_mozilla_4.png" alt="webauthn_login_mozilla_4.png" /></p>
+
+<p>If all goes well the browser will return an <a href="https://www.w3.org/TR/webauthn/#authenticatorassertionresponse"><code>AuthenticatorAssertionResponse</code></a> which looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{
+  &#34;id&#34;: <span style="color:#a31515">&#34;ABJcniVJwrH45aueEJJsD0LFTGMUxot1sHCOttym_p7rNPF72Zc_NcGo05j3KzDkU5fWELqRz7h9&#34;</span>,
+  &#34;rawId&#34;: <span style="color:#a31515">&#34;ABJcniVJwrH45aueEJJsD0LFTGMUxot1sHCOttym_p7rNPF72Zc_NcGo05j3KzDkU5fWELqRz7h9&#34;</span>,
+  &#34;type&#34;: <span style="color:#a31515">&#34;public-key&#34;</span>,
+  &#34;response&#34;: {
+    &#34;authenticatorData&#34;: <span style="color:#a31515">&#34;SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NFXMPTha3OAAI1vMYKZIsLJfHwVQMAOQASXJ4lScKx-OWrnhCSbA9CxUxjFMaLdbBwjrbcpv6e6zTxe9mXPzXBqNOY9ysw5FOX1hC6kc-4faUBAgMmIAEhWCC6NdvZp8idlfpaTuREhZ3YHOx2QNam7HQI5-uDx1JFRiJYIKe0q8Ax92EtplrfOtvfIxtOt7_XEvHYRQy16O-MpDjk&#34;</span>,
+    &#34;clientDataJSON&#34;: <span style="color:#a31515">&#34;eyJjaGFsbGVuZ2UiOiJBWmVZZGlMYzFoR0RVMHdvOU5PWm1aRzl2dS1hUG5mZjJhUEZnSkV3MUhJIiwib3JpZ2luIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwidHlwZSI6IndlYmF1dGhuLmdldCJ9&#34;</span>,
+    &#34;signature&#34;: <span style="color:#a31515">&#34;MEQCIFq-Q4v8DK89OUAyyOowjKMc6umCNLaQR1ry8obvFtRAAiBRf5c1ufdFR9w-nTsLm5NG_KtycZ0bWFLj5h-uRiYLCw&#34;</span>,
+    &#34;userHandle&#34;: <span style="color:#a31515">&#34;xOywiL6f3q9EAA&#34;</span>
+  }
+}</code></pre></div>
+<p>Let&rsquo;s break some of this down.</p>
+
+<p><strong>signature</strong></p>
+
+<p>Raw signature from the authenticator (using the registered private key) over the challenge.</p>
+
+<p><strong>userHandle</strong></p>
+
+<p>User id supplied by the Relying Party (same value as <code>user.id</code> from the <code>credentialCreationOptions</code> example in Begin Register - Part 1).</p>
+
+<p>The rest should look familiar from the <code>AuthenticatorAttestationResponse</code> in Finish Register - Part 4.</p>
+
+<h3 id="part-5-1">Part 5</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_login_mozilla_5.png" alt="webauthn_login_mozilla_5.png" /></p>
+
+<p>To finalize Finish Login, we need to base64 encode various ArrayBuffers, then send the <code>AuthenticatorAssertionResponse</code> back to the server via a <code>POST</code> to <code>/login/finish/{username}</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((assertion) =&gt; {
+
+  <span style="color:#00f">let</span> authData = assertion.response.authenticatorData;
+  <span style="color:#00f">let</span> clientDataJSON = assertion.response.clientDataJSON;
+  <span style="color:#00f">let</span> rawId = assertion.rawId;
+  <span style="color:#00f">let</span> sig = assertion.response.signature;
+  <span style="color:#00f">let</span> userHandle = assertion.response.userHandle;
+
+  $.post(
+    <span style="color:#a31515">&#39;/login/finish/&#39;</span> + username,
+    JSON.stringify({
+      id: assertion.id,
+      rawId: bufferEncode(rawId),
+      type: assertion.type,
+      response: {
+        authenticatorData: bufferEncode(authData),
+        clientDataJSON: bufferEncode(clientDataJSON),
+        signature: bufferEncode(sig),
+        userHandle: bufferEncode(userHandle),
+      },
+    }),
+    <span style="color:#00f">function</span> (data) {
+      <span style="color:#00f">return</span> data
+    },
+    <span style="color:#a31515">&#39;json&#39;</span>)
+})
+</code></pre></div>
+<p>Adding some success/fail handling and putting it all together, <code>loginUser()</code> looks like this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#00f">function</span> loginUser() {
+
+  username = $(<span style="color:#a31515">&#34;#email&#34;</span>).val()
+  <span style="color:#00f">if</span> (username === <span style="color:#a31515">&#34;&#34;</span>) {
+    alert(<span style="color:#a31515">&#34;please enter a username&#34;</span>);
+    <span style="color:#00f">return</span>;
+  }
+
+  $.get(
+    <span style="color:#a31515">&#39;/login/begin/&#39;</span> + username,
+    <span style="color:#00f">null</span>,
+    <span style="color:#00f">function</span> (data) {
+      <span style="color:#00f">return</span> data
+    },
+    <span style="color:#a31515">&#39;json&#39;</span>)
+    .then((credentialRequestOptions) =&gt; {
+
+      credentialRequestOptions.publicKey.challenge = bufferDecode(credentialRequestOptions.publicKey.challenge);
+      credentialRequestOptions.publicKey.allowCredentials.forEach(<span style="color:#00f">function</span> (listItem) {
+        listItem.id = bufferDecode(listItem.id)
+      });
+
+      <span style="color:#00f">return</span> navigator.credentials.get({
+        publicKey: credentialRequestOptions.publicKey
+      })
+    })
+    .then((assertion) =&gt; {
+
+      <span style="color:#00f">let</span> authData = assertion.response.authenticatorData;
+      <span style="color:#00f">let</span> clientDataJSON = assertion.response.clientDataJSON;
+      <span style="color:#00f">let</span> rawId = assertion.rawId;
+      <span style="color:#00f">let</span> sig = assertion.response.signature;
+      <span style="color:#00f">let</span> userHandle = assertion.response.userHandle;
+
+      $.post(
+        <span style="color:#a31515">&#39;/login/finish/&#39;</span> + username,
+        JSON.stringify({
+          id: assertion.id,
+          rawId: bufferEncode(rawId),
+          type: assertion.type,
+          response: {
+            authenticatorData: bufferEncode(authData),
+            clientDataJSON: bufferEncode(clientDataJSON),
+            signature: bufferEncode(sig),
+            userHandle: bufferEncode(userHandle),
+          },
+        }),
+        <span style="color:#00f">function</span> (data) {
+          <span style="color:#00f">return</span> data
+        },
+        <span style="color:#a31515">&#39;json&#39;</span>)
+    })
+    .then((success) =&gt; {
+      alert(<span style="color:#a31515">&#34;successfully logged in &#34;</span> + username + <span style="color:#a31515">&#34;!&#34;</span>)
+      <span style="color:#00f">return</span>
+    })
+    .<span style="color:#00f">catch</span>((error) =&gt; {
+      console.log(error)
+      alert(<span style="color:#a31515">&#34;failed to register &#34;</span> + username)
+    })
+}
+</code></pre></div>
+<h3 id="part-6-1">Part 6</h3>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/webauthn_login_mozilla_6.png" alt="webauthn_login_mozilla_6.png" /></p>
+
+<p>Finish Login - Part 6 is almost identical code wise to Finish Register - Part 6 except instead we call <code>webAuthn.FinishLogin()</code></p>
+
+<p>The server side portion of verifying a login assertion <a href="https://www.w3.org/TR/webauthn/#verifying-assertion">involves 18 steps</a>! Again, luckily we can take advantage of <code>duo-labs/webauthn</code>&rsquo;s simple <code>FinishLogin()</code> function. Briefly, these steps include looking up the user&rsquo;s public key, validating client data (i.e. domain name, challenge), and validating the signature. Back in <code>server.go</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> FinishLogin(w http.ResponseWriter, r *http.Request) {
+
+	<span style="color:#008000">// get username
+</span><span style="color:#008000"></span>	vars := mux.Vars(r)
+	username := vars[<span style="color:#a31515">&#34;username&#34;</span>]
+
+	<span style="color:#008000">// get user
+</span><span style="color:#008000"></span>	user, err := userDB.GetUser(username)
+
+	<span style="color:#008000">// user doesn&#39;t exist
+</span><span style="color:#008000"></span>	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+	<span style="color:#008000">// load the session data
+</span><span style="color:#008000"></span>	sessionData, err := sessionStore.GetWebauthnSession(<span style="color:#a31515">&#34;authentication&#34;</span>, r)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+    <span style="color:#008000">// in an actual implementation we should perform additional 
+</span><span style="color:#008000"></span>    <span style="color:#008000">// checks on the returned &#39;credential&#39;
+</span><span style="color:#008000"></span>	_, err = webAuthn.FinishLogin(user, sessionData, r)
+	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
+		log.Println(err)
+		jsonResponse(w, err.Error(), http.StatusBadRequest)
+		<span style="color:#00f">return</span>
+	}
+
+	<span style="color:#008000">// handle successful login
+</span><span style="color:#008000"></span>	jsonResponse(w, <span style="color:#a31515">&#34;Login Success&#34;</span>, http.StatusOK)
+}</code></pre></div>
+<p>Also make sure to add the handlers in <code>main()</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">r.HandleFunc(<span style="color:#a31515">&#34;/register/begin/{username}&#34;</span>, BeginRegistration).Methods(<span style="color:#a31515">&#34;GET&#34;</span>)
+r.HandleFunc(<span style="color:#a31515">&#34;/register/finish/{username}&#34;</span>, FinishRegistration).Methods(<span style="color:#a31515">&#34;POST&#34;</span>)
+r.HandleFunc(<span style="color:#a31515">&#34;/login/begin/{username}&#34;</span>, BeginLogin).Methods(<span style="color:#a31515">&#34;GET&#34;</span>)
+r.HandleFunc(<span style="color:#a31515">&#34;/login/finish/{username}&#34;</span>, FinishLogin).Methods(<span style="color:#a31515">&#34;POST&#34;</span>)</code></pre></div>
+<p>We just successfully finished WebAuthn login! Here’s roughly what we just built looks like in Chrome</p>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/login_example.gif" alt="login_example.gif" /></p>
+
+<h2 id="more">More</h2>
+
+<p>If we want to dive a little deeper, there are a few things we can do to touch up our implementation.</p>
+
+<h3 id="exclude-credentials">Exclude Credentials</h3>
+
+<p>If you play around and hit <code>register</code> multiple times using the same username + authenticator pair (i.e. foo@bar.com and a MacBook), you&rsquo;ll notice that multiple keys get registered! This is not ideal behavior since we only really need one key per user/authenticator for a relying party. In <code>PublicKeyCredentialCreationOptions</code> we can fill an optional list <code>excludeCredentialDescriptorList</code> with credentials (IDs and types). The browser can then use this list to block the creation of credentials that already exist on the authenticator for that user. To implement this, add the following function to <code>user.go</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#008000">// CredentialExcludeList returns a CredentialDescriptor array filled
+</span><span style="color:#008000">// with all a user&#39;s credentials
+</span><span style="color:#008000"></span><span style="color:#00f">func</span> (u User) CredentialExcludeList() []protocol.CredentialDescriptor {
+
+	credentialExcludeList := []protocol.CredentialDescriptor{}
+	<span style="color:#00f">for</span> _, cred := <span style="color:#00f">range</span> u.credentials {
+		descriptor := protocol.CredentialDescriptor{
+			Type:         protocol.PublicKeyCredentialType,
+			CredentialID: cred.ID,
+		}
+		credentialExcludeList = append(credentialExcludeList, descriptor)
+	}
+
+	<span style="color:#00f">return</span> credentialExcludeList
+}</code></pre></div>
+<p>Next, in <code>server.go</code> inside <code>BeginRegistration()</code>, replace <code>options, sessionData, err := webAuthn.BeginRegistration(...</code> with</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">options, sessionData, err := webAuthn.BeginRegistration(
+		user,
+		<span style="color:#00f">func</span>(creationOptions *protocol.PublicKeyCredentialCreationOptions) {
+			creationOptions.CredentialExcludeList = user.CredentialExcludeList()
+		},
+	)</code></pre></div>
+<p>Finally, add this code inside <code>registerUser()</code> inside <code>index.html</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((credentialCreationOptions) =&gt; {
+
+  credentialCreationOptions.publicKey.challenge = bufferDecode(credentialCreationOptions.publicKey.challenge);
+  credentialCreationOptions.publicKey.user.id = bufferDecode(credentialCreationOptions.publicKey.user.id);
+  <span style="color:#00f">if</span> (credentialCreationOptions.publicKey.excludeCredentials) {
+    <span style="color:#00f">for</span> (<span style="color:#00f">var</span> i = 0; i &lt; credentialCreationOptions.publicKey.excludeCredentials.length; i++) {
+      credentialCreationOptions.publicKey.excludeCredentials[i].id = bufferDecode(credentialCreationOptions.publicKey.excludeCredentials[i].id);
+    }
+  }
+
+  <span style="color:#00f">return</span> navigator.credentials.create({
+    publicKey: credentialCreationOptions.publicKey
+  })
+})
+</code></pre></div>
+<p>Now if you try to register twice, you&rsquo;ll see an error like this</p>
+
+<p><img src="https://www.herbie.dev/images/webauthn-basic-client-server/multiple_register_error.png" alt="multiple_register_error.png" /></p>
+
+<h3 id="signature-counter">Signature Counter</h3>
+
+<p>In an actual implementation, we would verify the sign counter of the credential returned in the <code>AuthenitcatorAttestationResponse</code> (from Finish Login) is greater than the sign counter we have stored for that credential. This is to check for cloned authenticators. Here&rsquo;s an <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/assertion.go#L78">example implementation</a>, and below is where it&rsquo;s mentioned in the spec</p>
+
+<ul>
+<li><a href="https://www.w3.org/TR/webauthn/#sign-counter">https://www.w3.org/TR/webauthn/#sign-counter</a></li>
+<li><a href="https://www.w3.org/TR/webauthn/#op-get-assertion">https://www.w3.org/TR/webauthn/#op-get-assertion</a> (step 9)</li>
+<li><a href="https://www.w3.org/TR/webauthn/#verifying-assertion">https://www.w3.org/TR/webauthn/#verifying-assertion</a> (step 17)</li>
+</ul>
+
+<h3 id="properly-storing-users">Properly Storing Users</h3>
+
+<p>For simplicity sake we stored/retrieved users via their username in <code>userdb</code>. To do this properly you should store/retrieve users via the <code>PublicKeyCredential</code>&rsquo;s <code>id</code> or <code>rawID</code> as per the <a href="https://www.w3.org/TR/webauthn/#verifying-assertion">spec&rsquo;s verifying assertion step 3</a>. For reference implementation, view</p>
+
+<ul>
+<li>GetAssertion()/MakeAssertion() in <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/assertion.go">assertion.go</a> (from <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/assertion.go"><code>github.com/duo-labs/webauthn.io</code></a>)</li>
+<li>RequestNewCredential()/MakeNewCredential() in <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/credential.go">credential.go</a> (from <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/assertion.go"><code>github.com/duo-labs/webauthn.io</code></a>)</li>
+</ul>
+
+<h3 id="credential-exists-check">Credential Exists Check</h3>
+
+<p>According to the <a href="https://www.w3.org/TR/webauthn/#registering-a-new-credential">spec&rsquo;s registering a new credential step 17</a>, we should check that the credential&rsquo;s <code>credentialId</code> isn&rsquo;t registered yet to any other user. If it is we could decide to fail the registration, or we could do something like accept the registration and delete the old credential/user association.</p>
+
+<h2 id="notes">Notes</h2>
+
+<p>* <em>technically there&rsquo;s an attestation option &lsquo;none&rsquo; <a href="https://www.w3.org/TR/webauthn/#attestation-convey">(see here)</a> where the challenge isn&rsquo;t actually signed</em></p>
+
+  </article>
+</section>
+
+
+      </div>
+
+      <footer class="footer">
+  <section class="container">
+    
+      <p>Herbie&#39;s personal site</p>
+    
+     © 2019
+    
+       · 
+      Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+    
+    
+  </section>
+</footer>
+
+    </main>
+
+    
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+	ga('create', 'UA-136612598-1', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+
+
+  </body>
+
+</html>

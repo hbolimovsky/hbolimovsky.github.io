@@ -6,10 +6,20 @@
     <description>Recent content in Blogs on Herbie&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 07 Apr 2019 07:35:24 -0700</lastBuildDate>
+    <lastBuildDate>Mon, 15 Apr 2019 20:40:39 -0700</lastBuildDate>
     
 	<atom:link href="https://www.herbie.dev/blog/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>WebAuthn Basic Web Client/Server</title>
+      <link>https://www.herbie.dev/blog/webauthn-basic-web-client-server/</link>
+      <pubDate>Mon, 15 Apr 2019 20:40:39 -0700</pubDate>
+      
+      <guid>https://www.herbie.dev/blog/webauthn-basic-web-client-server/</guid>
+      <description>In this tutorial we&amp;rsquo;ll build a basic WebAuthn web client/server in go using Duo Labs&amp;rsquo; awesome WebAuthn library. We&amp;rsquo;ll also briefly go over the WebAuthn API. All code for this tutorial can be found here. Note this tutorial is not meant to be used in production but more as a starting point to building a functioning WebAuthn server and client, and as an introduction to the WebAuthn API.
+What Is WebAuthn WebAuthn is a standard that enables passwordless authentication (aka login) in the browser (and beyond).</description>
+    </item>
     
     <item>
       <title>Network of Trusted Devices Example (Illustrations)</title>
