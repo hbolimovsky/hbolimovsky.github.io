@@ -429,6 +429,27 @@ What Is WebAuthn WebAuthn is a standard that enables passwordless authentication
 
 <p>Contains information required to verify the signed challenge, like the challenge itself as well as the user&rsquo;s id.</p>
 
+<p><strong>NOTE</strong></p>
+
+<p>There is one more thing we need to add to the above code. As of this writing, <code>duo-labs/webauthn</code> defaults to preferring a <a href="https://www.w3.org/TR/webauthn/#roaming-authenticators">roaming authenticator</a>. What this means is if you want to use a <a href="https://www.w3.org/TR/webauthn/#platform-authenticators">platform authenticator</a> such as Touch ID or Windows Hello, your browser might not let you. To override this behavior, modify what we just added to include this</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">	authSelection := protocol.AuthenticatorSelection{
+		<span style="color:#008000">// since AuthenticatorAttachment defaults to CrossPlatform need to
+</span><span style="color:#008000"></span>		<span style="color:#008000">// explicitly leave blank, which tells the user agent (browser)
+</span><span style="color:#008000"></span>		<span style="color:#008000">// the RP doesn&#39;t have a preference, so the user can choose to use
+</span><span style="color:#008000"></span>		<span style="color:#008000">// a roaming or platform authenticator
+</span><span style="color:#008000"></span>		RequireResidentKey: <span style="color:#00f">false</span>,
+		UserVerification:   protocol.VerificationPreferred,
+	}
+
+	registerOptions := <span style="color:#00f">func</span>(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
+		credCreationOpts.AuthenticatorSelection = authSelection
+	}
+
+	<span style="color:#008000">// generate PublicKeyCredentialCreationOptions, session data
+</span><span style="color:#008000"></span>	options, sessionData, err := webAuthn.BeginRegistration(
+		user,
+		registerOptions,
+	)</code></pre></div>
 <p>To finish <code>BeginRegistration()</code> we&rsquo;ll store the session data and return the options to the client</p>
 <div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">	<span style="color:#008000">// store session data as marshaled JSON
 </span><span style="color:#008000"></span>	err = sessionStore.SaveWebauthnSession(<span style="color:#a31515">&#34;registration&#34;</span>, sessionData, r, w)
@@ -1021,14 +1042,12 @@ r.HandleFunc(<span style="color:#a31515">&#34;/login/finish/{username}&#34;</spa
 
 	<span style="color:#00f">return</span> credentialExcludeList
 }</code></pre></div>
-<p>Next, in <code>server.go</code> inside <code>BeginRegistration()</code>, replace <code>options, sessionData, err := webAuthn.BeginRegistration(...</code> with</p>
-<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">options, sessionData, err := webAuthn.BeginRegistration(
-		user,
-		<span style="color:#00f">func</span>(creationOptions *protocol.PublicKeyCredentialCreationOptions) {
-			creationOptions.CredentialExcludeList = user.CredentialExcludeList()
-		},
-	)</code></pre></div>
-<p>Finally, add this code inside <code>registerUser()</code> inside <code>index.html</code></p>
+<p>Next, in <code>server.go</code> inside <code>BeginRegistration()</code>, add the following to <code>registerOptions</code></p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">registerOptions := <span style="color:#00f">func</span>(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
+  credCreationOpts.AuthenticatorSelection = authSelection
+  credCreationOpts.CredentialExcludeList = user.CredentialExcludeList()
+}</code></pre></div>
+<p>Finally, add this code inside <code>registerUser()</code> in <code>index.html</code></p>
 <div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((credentialCreationOptions) =&gt; {
 
   credentialCreationOptions.publicKey.challenge = bufferDecode(credentialCreationOptions.publicKey.challenge);
@@ -1067,9 +1086,13 @@ r.HandleFunc(<span style="color:#a31515">&#34;/login/finish/{username}&#34;</spa
 <li>RequestNewCredential()/MakeNewCredential() in <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/credential.go">credential.go</a> (from <a href="https://github.com/duo-labs/webauthn.io/blob/master/server/assertion.go"><code>github.com/duo-labs/webauthn.io</code></a>)</li>
 </ul>
 
+<h3 id="assessing-attestation-statements">Assessing Attestation Statements</h3>
+
+<p>As per the <a href="https://www.w3.org/TR/webauthn/#registering-a-new-credential">specs registering a new credential steps 15 and 16</a>, inside <code>FinishRegister()</code> we should analyze, assess, and verify an attestation statement against some policy. For example, we can weigh trust by which <a href="https://www.w3.org/TR/webauthn/#sctn-attestation-types">attestation type</a> (i.e. none, self, basic) was used, as well as which trust anchor was used. For more on trust anchors take a look at the <a href="https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-metadata-service-v2.0-id-20180227.html">FIDO Metadata Service</a>.</p>
+
 <h3 id="credential-exists-check">Credential Exists Check</h3>
 
-<p>According to the <a href="https://www.w3.org/TR/webauthn/#registering-a-new-credential">spec&rsquo;s registering a new credential step 17</a>, we should check that the credential&rsquo;s <code>credentialId</code> isn&rsquo;t registered yet to any other user. If it is we could decide to fail the registration, or we could do something like accept the registration and delete the old credential/user association.</p>
+<p>According to the <a href="https://www.w3.org/TR/webauthn/#registering-a-new-credential">specs registering a new credential step 17</a> inside <code>FinishRegister()</code> we should check that the credential&rsquo;s <code>credentialId</code> isn&rsquo;t registered yet to any other user. If it is we could decide to fail the registration, or we could do something like accept the registration and delete the old credential/user association.</p>
 
 <h2 id="notes">Notes</h2>
 
