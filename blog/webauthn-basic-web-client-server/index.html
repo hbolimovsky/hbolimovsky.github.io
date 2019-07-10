@@ -429,36 +429,6 @@ What Is WebAuthn WebAuthn is a standard that enables passwordless authentication
 
 <p>Contains information required to verify the signed challenge, like the challenge itself as well as the user&rsquo;s id.</p>
 
-<p><strong>NOTE</strong>: There is one more thing we need to add to the above code. As of this writing, <code>duo-labs/webauthn</code> defaults to preferring a <a href="https://www.w3.org/TR/webauthn/#roaming-authenticators">roaming authenticator</a>. What this means is if you want to use a <a href="https://www.w3.org/TR/webauthn/#platform-authenticators">platform authenticator</a> such as Touch ID or Windows Hello, your browser might not let you. To override this behavior, modify what we just added to include this</p>
-<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">authSelection := protocol.AuthenticatorSelection{
-  <span style="color:#008000">// since AuthenticatorAttachment defaults to CrossPlatform need to
-</span><span style="color:#008000"></span>  <span style="color:#008000">// explicitly leave blank, which tells the user agent (browser)
-</span><span style="color:#008000"></span>  <span style="color:#008000">// the RP doesn&#39;t have a preference, so the user can choose to use
-</span><span style="color:#008000"></span>  <span style="color:#008000">// a roaming or platform authenticator
-</span><span style="color:#008000"></span>  RequireResidentKey: <span style="color:#00f">false</span>,
-  UserVerification:   protocol.VerificationPreferred,
-}
-
-registerOptions := <span style="color:#00f">func</span>(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
-  credCreationOpts.AuthenticatorSelection = authSelection
-}
-
-<span style="color:#008000">// generate PublicKeyCredentialCreationOptions, session data
-</span><span style="color:#008000"></span>options, sessionData, err := webAuthn.BeginRegistration(
-  user,
-  registerOptions,
-)</code></pre></div>
-<p>To finish <code>BeginRegistration()</code> we&rsquo;ll store the session data and return the options to the client</p>
-<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">	<span style="color:#008000">// store session data as marshaled JSON
-</span><span style="color:#008000"></span>	err = sessionStore.SaveWebauthnSession(<span style="color:#a31515">&#34;registration&#34;</span>, sessionData, r, w)
-	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
-		log.Println(err)
-		jsonResponse(w, err.Error(), http.StatusInternalServerError)
-		<span style="color:#00f">return</span>
-	}
-
-	jsonResponse(w, options, http.StatusOK)
-}</code></pre></div>
 <p>Putting it all together, <code>BeginRegistration()</code> looks like this</p>
 <div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#00f">func</span> BeginRegistration(w http.ResponseWriter, r *http.Request) {
 
@@ -479,23 +449,9 @@ registerOptions := <span style="color:#00f">func</span>(credCreationOpts *protoc
 		userDB.PutUser(user)
 	}
 
-	authSelection := protocol.AuthenticatorSelection{
-		<span style="color:#008000">// since AuthenticatorAttachment defaults to CrossPlatform need to
-</span><span style="color:#008000"></span>		<span style="color:#008000">// explicitly leave blank, which tells the user agent (browser)
-</span><span style="color:#008000"></span>		<span style="color:#008000">// the RP doesn&#39;t have a preference, and the user can choose to use
-</span><span style="color:#008000"></span>		<span style="color:#008000">// a roaming or platform authenticator
-</span><span style="color:#008000"></span>		RequireResidentKey: <span style="color:#00f">false</span>,
-		UserVerification:   protocol.VerificationPreferred,
-	}
-
-	registerOptions := <span style="color:#00f">func</span>(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
-		credCreationOpts.AuthenticatorSelection = authSelection
-	}
-
 	<span style="color:#008000">// generate PublicKeyCredentialCreationOptions, session data
 </span><span style="color:#008000"></span>	options, sessionData, err := webAuthn.BeginRegistration(
 		user,
-		registerOptions,
 	)
 
 	<span style="color:#00f">if</span> err != <span style="color:#00f">nil</span> {
@@ -1057,11 +1013,15 @@ r.HandleFunc(<span style="color:#a31515">&#34;/login/finish/{username}&#34;</spa
 
 	<span style="color:#00f">return</span> credentialExcludeList
 }</code></pre></div>
-<p>Next, in <code>server.go</code> inside <code>BeginRegistration()</code>, add the following to <code>registerOptions</code></p>
+<p>Next, in <code>server.go</code> inside <code>BeginRegistration()</code>, add the following</p>
 <div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">registerOptions := <span style="color:#00f">func</span>(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
-  credCreationOpts.AuthenticatorSelection = authSelection
   credCreationOpts.CredentialExcludeList = user.CredentialExcludeList()
-}</code></pre></div>
+}
+
+options, sessionData, err := webAuthn.BeginRegistration(
+  user,
+  registerOptions,
+)</code></pre></div>
 <p>Finally, add this code inside <code>registerUser()</code> in <code>index.html</code></p>
 <div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js">.then((credentialCreationOptions) =&gt; {
 
