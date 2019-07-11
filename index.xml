@@ -27,7 +27,7 @@ What Is WebAuthn WebAuthn is a standard that enables passwordless authentication
       <pubDate>Sun, 07 Apr 2019 07:35:24 -0700</pubDate>
       
       <guid>https://www.herbie.dev/blog/network-of-trusted-devices-example/</guid>
-      <description>Below is an example of what a passwordless world via a network of trusted devices could look like. It follows Bob, a new employee of Foobar Corp, along with Alice, Foobar&amp;rsquo;s trusty head of IT. For more on a passwordless world, see my previous post Arriving At A Passwordless Future.
+      <description>Below is an example of what a passwordless world via a network of trusted devices could look like. It follows Bob, a new employee of Foobar Corp, along with Alice, Foobar&amp;rsquo;s trusty head of IT. For more on a passwordless world, see the post Arriving At A Passwordless Future.
 Bob&amp;rsquo;s First Day On Bob&amp;rsquo;s first day Alice gives him a brand new MacBook with Touch ID. Alice tells Bob:</description>
     </item>
     
